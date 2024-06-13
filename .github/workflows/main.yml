@@ -1,0 +1,69 @@
+name: Push Docker to AliyunACR
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository_name:
+        description: 'Aliyun Repository Name'
+        required: true
+        default: 'default-repository'
+      image_url:
+        description: 'DockerHub Image URL'
+        required: true
+        default: 'username/image:tag'
+
+jobs:
+  build:
+    name: Pull and Push to Aliyun
+    runs-on: ubuntu-latest
+    steps:
+    - name: Before freeing up disk space
+      run: |
+        echo "Before freeing up disk space"
+        echo "=============================================================================="
+        df -hT
+        echo "=============================================================================="
+
+    - name: Maximize build space
+      uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 2048
+        swap-size-mb: 128
+        remove-dotnet: 'true'
+        remove-haskell: 'true'
+        build-mount-path: '/var/lib/docker/'
+
+    - name: Restart docker
+      run: sudo service docker restart
+
+    - name: Free up disk space complete
+      run: |
+        echo "Free up disk space complete"
+        echo "=============================================================================="
+        df -hT
+        echo "=============================================================================="
+
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Docker Setup Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push image to Aliyun
+      run: |
+        docker login -u $ALIYUN_REGISTRY_USER -p $ALIYUN_REGISTRY_PASSWORD $ALIYUN_REGISTRY
+        image_url="${{ github.event.inputs.image_url }}"
+        docker pull $image_url
+        platform=$(echo "$image_url" | awk -F'--platform[ =]' '{if (NF>1) print $2}' | awk '{print $1}')
+        platform_prefix="${platform:+${platform//\//_}_}"
+        image_name_tag=$(echo "$image_url" | awk '{print $NF}' | sed 's/@.*//')
+
+        name_space=$(echo "$image_url" | awk -F'/' '{if (NF==3) print $2; else if (NF==2) print $1}')
+        name_space_prefix="${name_space:+${name_space}_}"
+        new_image="$ALIYUN_REGISTRY/${{ github.event.inputs.repository_name }}/$platform_prefix$name_space_prefix$image_name_tag"
+
+        echo "docker tag $image_url $new_image"
+        docker tag $image_url $new_image
+        echo "docker push $new_image"
+        docker push $new_image
+        docker rmi $image_url $new_image
