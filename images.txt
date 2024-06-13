@@ -1,2 +1,3 @@
 danielgatis/rembg:latest
 php:8.2.15-fpm-alpine
+idootop/mi-gpt:latest
