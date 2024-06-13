@@ -75,7 +75,7 @@ jobs:
 
         name_space=$(echo "$image_url" | awk -F'/' '{if (NF==3) print $2; else if (NF==2) print $1}')
         name_space_prefix="${name_space:+${name_space}_}"
-        new_image="$ALIYUN_REGISTRY/${REPOSITORY_NAME:-$ALIYUN_NAME_SPACE}/$platform_prefix$name_space_prefix$image_name_tag"
+        new_image="$ALIYUN_REGISTRY/$ALIYUN_NAME_SPACE/$platform_prefix$name_space_prefix$image_name_tag"
 
         echo "docker tag $image_url $new_image"
         docker tag $image_url $new_image
