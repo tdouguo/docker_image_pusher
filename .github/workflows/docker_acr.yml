@@ -3,20 +3,35 @@ name: Push Docker to AliyunACR
 on:
   workflow_dispatch:
     inputs:
-      repository_name:
-        description: 'Aliyun Repository Name'
-        required: true
-        default: 'default-repository'
       image_url:
         description: 'DockerHub Image URL'
         required: true
         default: 'username/image:tag'
 
+      repository_name:
+        description: '在阿里云镜像中的名称 例:public-cdn/{名称} ，默认为空读取image_url中名称'
+        required: false  # Make it optional
+        default: ''
+
 jobs:
   build:
     name: Pull and Push to Aliyun
     runs-on: ubuntu-latest
+    env:
+      ALIYUN_REGISTRY: "${{ secrets.ALIYUN_REGISTRY }}"
+      ALIYUN_NAME_SPACE: "${{ secrets.ALIYUN_NAME_SPACE }}"
+      ALIYUN_REGISTRY_USER: "${{ secrets.ALIYUN_REGISTRY_USER }}"
+      ALIYUN_REGISTRY_PASSWORD: "${{ secrets.ALIYUN_REGISTRY_PASSWORD }}"
     steps:
+    - name: Set Default Repository Name
+      run: |
+        if [[ "${{ github.event.inputs.repository_name }}" == "" ]]; then
+          export REPOSITORY_NAME=$(echo "${{ github.event.inputs.image_url }}" | awk -F '/' '{print $NF}' | cut -d ':' -f 1)
+        else
+          export REPOSITORY_NAME="${{ github.event.inputs.repository_name }}"
+        fi
+        echo "REPOSITORY_NAME=$REPOSITORY_NAME" >> $GITHUB_ENV
+
     - name: Before freeing up disk space
       run: |
         echo "Before freeing up disk space"
@@ -60,7 +75,7 @@ jobs:
 
         name_space=$(echo "$image_url" | awk -F'/' '{if (NF==3) print $2; else if (NF==2) print $1}')
         name_space_prefix="${name_space:+${name_space}_}"
-        new_image="$ALIYUN_REGISTRY/${{ github.event.inputs.repository_name }}/$platform_prefix$name_space_prefix$image_name_tag"
+        new_image="$ALIYUN_REGISTRY/${REPOSITORY_NAME:-$ALIYUN_NAME_SPACE}/$platform_prefix$name_space_prefix$image_name_tag"
 
         echo "docker tag $image_url $new_image"
         docker tag $image_url $new_image
