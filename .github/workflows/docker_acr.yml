@@ -72,7 +72,7 @@ jobs:
         
         platform=$(echo "$image_url" | awk -F'--platform[ =]' '{if (NF>1) print $2}' | awk '{print $1}')
         platform_prefix="${platform:+${platform//\//_}_}"
-        image_name_tag=$(echo "$image_url" | awk '{print $NF}' | sed 's/@.*//')
+        image_name_tag=$(basename "$image_url" | sed 's/@.*//' | sed 's/:/_/g')
 
         name_space=$(echo "$image_url" | awk -F'/' '{if (NF==3) print $2; else if (NF==2) print $1}')
         name_space_prefix="${name_space:+${name_space}_}"
